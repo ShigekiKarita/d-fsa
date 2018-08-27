@@ -1,0 +1,9 @@
+{
+	"name": "d-fsa",
+	"authors": [
+		"skarita"
+	],
+	"description": "A minimal D finite state automata.",
+	"copyright": "Copyright © 2018, skarita",
+	"license": "BSL-1.0"
+}
