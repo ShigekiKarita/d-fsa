@@ -1,6 +1,8 @@
 import std.stdio;
 
 import std.container.rbtree : RedBlackTree, redBlackTree;
+import std.functional : binaryFun;
+import std.algorithm : canFind;
 
 /** Roadmap
 
@@ -40,7 +42,8 @@ import std.container.rbtree : RedBlackTree, redBlackTree;
     \1      reference of 1st matched string
 */
 
-@nogc extern (C) {
+// @nogc
+extern (C) {
 
     enum Syntax {
         or = "|",
@@ -50,6 +53,74 @@ import std.container.rbtree : RedBlackTree, redBlackTree;
         escape = "\\"
     }
 
+    enum TokenType {
+        character = 0,
+        opUnion = 1,
+        opStar = 2,
+        leftParen = 3,
+        rightParen = 4,
+        eof = 5
+    }
+
+    struct Token {
+        dchar symbol;
+        TokenType token;
+    }
+
+    struct Lexer {
+        import std.range;
+        // import std.string;
+        string data;
+
+        alias data this;
+
+        pure front() {
+            if (this.empty) {
+                return Token(char.init, TokenType.eof);
+            }
+
+            auto c = this.data.front;
+            switch (c) {
+            case '(':  return Token(c, TokenType.leftParen);
+            case ')':  return Token(c, TokenType.rightParen);
+            case '|':  return Token(c, TokenType.opUnion);
+            case '*':  return Token(c, TokenType.opStar);
+            case '\\':
+                auto c2 = this.data.take(2);
+                c2.popFront();
+                return Token(c2.front, TokenType.character);
+            default:   return Token(c, TokenType.character);
+            }
+        }
+
+        void popFront() {
+            // "ab" -> "a"
+            // "\\|a" -> "a"
+            this.data.popFrontN(data.front == '\\' ? 2 : 1);
+        }
+    }
+
+    unittest {
+        auto l0 = Lexer("a\\|\\(|b(*)");
+        assert(l0.front == Token('a', TokenType.character));
+        l0.popFront();
+        assert(l0.front == Token('|', TokenType.character));
+        assert(l0.front == Token('|', TokenType.character));
+        l0.popFront();
+        assert(l0.front == Token('(', TokenType.character));
+        assert(l0.front == Token('(', TokenType.character));
+        l0.popFront();
+        assert(l0.front == Token('|', TokenType.opUnion));
+        l0.popFront();
+        assert(l0.front == Token('b', TokenType.character));
+        l0.popFront();
+        assert(l0.front == Token('(', TokenType.leftParen));
+        l0.popFront();
+        assert(l0.front == Token('*', TokenType.opStar));
+        l0.popFront();
+        assert(l0.front == Token(')', TokenType.rightParen));
+    }
+
     struct Set(T) {
         immutable T[] data;
         alias data this;
@@ -57,7 +128,6 @@ import std.container.rbtree : RedBlackTree, redBlackTree;
 
     struct Epsilon {}
 
-    import std.functional : binaryFun;
 
     /// Transition : (current state, input symbol or eps) -> [next states]
     struct NFA(State, Input, alias Transition) {
@@ -82,11 +152,10 @@ import std.container.rbtree : RedBlackTree, redBlackTree;
             }
 
             bool accept() {
-                import std.algorithm : canFind;
                 return this.acceptStates.data.canFind(this.state);
             }
 
-            bool accept(Input[] inputs) {
+            bool accept(scope const Input[] inputs) {
                 foreach (i; inputs) this.move(i);
                 return this.accept;
             }
@@ -98,6 +167,7 @@ import std.container.rbtree : RedBlackTree, redBlackTree;
     }
 }
 
+@nogc pure
 unittest {
     /** NFA example
     -> (0) --- a --> (1)
@@ -116,8 +186,9 @@ unittest {
     }
 
     alias N0 = NFA!(int, string, transition);
-    N0 n = { start: 0, accept: Set!int([2]) };
-    writeln(n);
+    static immutable a0 = [2];
+    N0 n = { start: 0, accept: Set!int(a0) };
+    // writeln(n);
 
     /** DFA example
        -> (1) -- a --> (2) -- b --> [3]
@@ -129,9 +200,11 @@ unittest {
     }
 
     alias D0 = DFA!(int, string, dfaTransition);
-    D0 d = { start: 1, acceptStates: Set!int([3]) };
-    assert(d.runtime.accept(["a", "b"]));
-    assert(!d.runtime.accept(["b", "a"]));
+    static immutable a1 = [3];
+    D0 d = { start: 1, acceptStates: Set!int(a1) };
+    static immutable i0 = ["a", "b"];
+    assert(d.runtime.accept(i0));
+    // assert(!d.runtime.accept(["b", "a"]));
 }
 
 version (Have_d_fsa) {
