@@ -2,143 +2,9 @@ module dfsa.parser;
 
 import dfsa.lexer : Lexer, Token, TokenKind;
 import dfsa.automata;
+import dfsa.builder;
+import dfsa.ast;
 
-struct Context {
-    @disable this(this);
-    @disable new(size_t);
-
-    int stateCount = 0;
-
-    auto newState() {
-        ++this.stateCount;
-        return this.stateCount;
-    }
-}
-
-struct NFAFragment(State, Input){
-    @disable this(this);
-    @disable new(size_t);
-
-    struct Key {
-        immutable State state;
-        immutable Input input;
-    }
-
-    immutable State start;
-    immutable Set!State acceptSet;
-    MutableSet!State[Key] map;
-
-    auto build() {
-        auto trans(State s, Input i) {
-            return this.map.get(Key(s, i), MutableSet!State([]));
-        }
-        return NFA!(State, Input, trans)(this.start, this.acceptSet);
-    }
-
-    void connect(State src, Input input, State dst) {
-        this.map[Key(src, input)] ~= dst;
-    }
-
-    auto compose(scope const ref typeof(this) other) {
-        auto ret = this.skelton();
-        // TODO find much better way to compose assoc
-        foreach (k, v; other.map) {
-            ret.map[k] = v.dup;
-        }
-        return ret;
-    }
-
-    auto skelton() {
-        NFAFragment nfr;
-        nfr.map = this.map.dup;
-        return nfr;
-    }
-}
-
-/**
-   AST nodes
-
-   Example:
-
-   a|(bc)* => Union(Char('a'), Star(Concat(Char('b'), Char('c'))))
-*/
-interface AST {
-    alias Fragment = NFAFragment!(int, dchar);
-
-    Fragment assemble(scope ref Context ctx) const;
-}
-
-class Character : AST {
-    dchar data;
-    this(dchar d) {
-        this.data = d;
-    }
-
-    override Fragment assemble(scope ref Context ctx) const {
-        auto s1 = ctx.newState();
-        auto s2 = ctx.newState();
-        Fragment ret = {start: s1, acceptSet: Set!int([s2])};
-        ret.connect(s1, this.data, s2);
-        return ret;
-    }
-}
-class Star : AST {
-    AST node;
-    this(AST node) {
-        this.node = node;
-    }
-
-    override Fragment assemble(scope ref Context ctx) const {
-        auto orig = this.node.assemble(ctx);
-        auto s = ctx.newState();
-        // FIXME
-        immutable a = cast(immutable(int[]))(orig.acceptSet ~ [s]);
-        Fragment ret = {map: orig.map.dup, start: s, acceptSet: Set!int(a)};
-        ret.connect(s, dchar.init, orig.start);
-
-        foreach (state; orig.acceptSet) {
-            ret.connect(state, dchar.init, orig.start);
-        }
-        return ret;
-    }
-}
-class Union : AST {
-    AST left, right;
-    this(AST left, AST right) {
-        this.left = left;
-        this.right = right;
-    }
-
-    override Fragment assemble(scope ref Context ctx) const {
-        auto l = this.left.assemble(ctx);
-        auto r = this.right.assemble(ctx);
-        auto m = l.compose(r).map;
-        auto a = l.acceptSet ~ r.acceptSet;
-        auto s = ctx.newState();
-        Fragment ret = {start:s, map: m, acceptSet: Set!int(a)};
-        ret.connect(s, dchar.init, l.start);
-        ret.connect(s, dchar.init, r.start);
-        return ret;
-    }
-}
-class Concat : AST {
-    AST left, right;
-    this(AST left, AST right) {
-        this.left = left;
-        this.right = right;
-    }
-
-    override Fragment assemble(scope ref Context ctx) const {
-        auto l = this.left.assemble(ctx);
-        auto r = this.right.assemble(ctx);
-        auto m = l.compose(r).map;
-        Fragment ret = {start:l.start, map: m, acceptSet: r.acceptSet};
-        foreach (state; l.acceptSet) {
-            ret.connect(state, dchar.init, r.start);
-        }
-        return ret;
-    }
-}
 
 /**
    expression := subexpr EOF
@@ -154,26 +20,30 @@ struct Parser {
 
     this(Lexer lex) {
         this.lexer = lex;
-        this.popFront();
+        this.look = this.lexer.front;
+        this.move();
+    }
+
+    void move() {
+        this.look = this.lexer.front;
+        this.lexer.popFront();
     }
 
     void match(TokenKind kind) {
         assert(this.look.kind == kind);
-        this.popFront();
+        this.move();
     }
 
-    void popFront() {
-        this.look = this.lexer.front;
-        this.lexer.popFront();
-    }
+    // void popFront() {
+    //     this.look = this.lexer.front;
+    //     this.lexer.popFront();
+    // }
 
     /// expr := subexpr EOF
     auto expr() {
         AST node = this.subexpr();
         this.match(TokenKind.eof);
-        Context c;
-        auto fragment = node.assemble(c);
-        return fragment.build();
+        return node;
     }
 
     /// subexpr := seq '|' subexpr '|' seq
@@ -196,7 +66,7 @@ struct Parser {
             return this.subseq();
         default:
             // TODO: use final switch
-            return new Character(dchar.init);
+            return new Char(dchar.init);
         }
     }
 
@@ -233,7 +103,7 @@ struct Parser {
             return node;
         } else {
             // factor -> CHARACTER
-            AST node = new Character(this.look.symbol);
+            AST node = new Char(this.look.symbol);
             this.match(TokenKind.character);
             return node;
         }
@@ -243,5 +113,13 @@ struct Parser {
 unittest {
     import std.stdio;
     auto p = Parser(Lexer("a|(bc)*"));
-    writeln(p);
+    auto ast = p.expr();
+    auto ast0 = new Union(new Char('a'), new Star(new Concat(new Char('b'), new Char('c'))));
+    writeln(ast0);
+    assert(ast0.toString == "Union('a', Star(Concat('b', 'c')))");
+    assert(ast == ast0);
+
+    Context c;
+    auto fragment = ast.assemble(c);
+    writeln(fragment.build());
 }

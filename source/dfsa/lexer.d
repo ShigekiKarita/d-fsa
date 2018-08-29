@@ -80,9 +80,11 @@ struct Lexer {
     }
 
     void popFront() {
-        // "ab" -> "a"
-        // "\\|a" -> "a"
-        this.data.popFrontN(data.front == '\\' ? 2 : 1);
+        if (!this.empty) {
+            // "ab" -> "a"
+            // "\\|a" -> "a"
+            this.data.popFrontN(data.front == '\\' ? 2 : 1);
+        }
     }
 }
 
