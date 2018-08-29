@@ -10,10 +10,6 @@ version (dfsa_set_rbtree) {
     alias Set = RedBlackTree;
     alias set = redBlackTree;
 
-    bool canFind(T, alias less = "a < b", bool allowDuplicates = false)(const RedBlackTree!(T, less, allowDuplicates) rbt, T x) {
-        return !rbt.equalRange(x).empty;
-    }
-
     unittest {
         assert(1 in set(0, 1, 2));
     }
