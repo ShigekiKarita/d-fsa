@@ -28,9 +28,12 @@ else {
 
         nothrow:
 
-        private struct Empty {}
+        struct Empty {}
         Empty[T] assoc;
-        alias assoc this;
+
+        pure length() const {
+            return this.assoc.length;
+        }
 
         pure opSlice() const {
             return this.assoc.keys();
@@ -52,14 +55,15 @@ else {
             }
         }
 
-        auto opBinary(string op)(T x) {
+        pure opBinary(string op)(T x) const {
             static if (op == "~") {
                 return merge(this[], [x]);
             } else {
                 static assert(false);
             }
         }
-        auto opBinary(string op)(const typeof(this) r) {
+
+        pure opBinary(string op)(const typeof(this) r) const {
             static if (op == "~") {
                 return merge(this[], r.dup[]);
             } else {
@@ -67,7 +71,7 @@ else {
             }
         }
 
-        auto opBinaryRight(string op)(T x) {
+        pure opBinaryRight(string op)(T x) const {
             static if (op == "~") {
                 return merge(this, [x]);
             } static if (op == "in") {
@@ -77,7 +81,7 @@ else {
             }
         }
 
-        auto opOpAssign(string op)(T x) {
+        @safe auto opOpAssign(string op)(T x) {
             static if (op == "~") {
                 this.insert(x);
                 return this;
@@ -95,12 +99,16 @@ else {
             }
         }
 
-        auto dup() const {
+        pure auto dup() const {
             return set(this[]);
         }
 
         bool remove(T x) {
             return this.assoc.remove(x);
+        }
+
+        auto clear() {
+            return this.assoc.clear();
         }
     }
 
@@ -127,12 +135,14 @@ else {
     unittest {
         import std.stdio;
 
+        // simple ops
         enum s0 = set(0, 1, 2);
         static assert(s0.length == 3);
         static assert(1 in s0);
         static assert(-1 !in s0);
         static assert(set(0, 1, 2) == set(1, 0, 2));
 
+        // mutations
         enum s1 = { auto s = set(0, 1);
                     s ~= 2;
                     s ~= set(3, 4, 5);
@@ -142,6 +152,7 @@ else {
         static assert(3 in s1);
         static assert(-2 !in s1);
 
+        // dup
         auto s2 = set(0, 1);
         auto s3 = s2.dup;
         assert(s2.remove(1));

@@ -78,7 +78,7 @@ pure unittest {
     }
 
     alias N0 = NFA!(int, string, transition);
-    N0 n = { start: 0, accept: set(2) };
+    enum N0 n = { start: 0, accept: set(2) };
     // writeln(n);
 
     /**
