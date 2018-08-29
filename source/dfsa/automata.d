@@ -59,8 +59,7 @@ struct DFA(State, Input, alias trans) {
 }
 
 
-// @nogc pure
-unittest {
+pure unittest {
     /**
        NFA example
        | -> (0) --- a --> (1)
@@ -93,9 +92,9 @@ unittest {
     }
 
     alias D0 = DFA!(int, string, dfaTransition);
-    static immutable D0 d = { start: 1, acceptStates: set(3) };
+    enum D0 d = { start: 1, acceptStates: set(3) };
     static immutable i0 = ["a", "b"];
-    assert(d.runtime.accept(i0));
+    static assert(d.runtime.accept(i0));
     static immutable i1 = ["b", "a"];
-    assert(!d.runtime.accept(i1));
+    static assert(!d.runtime.accept(i1));
 }
