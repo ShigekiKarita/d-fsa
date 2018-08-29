@@ -4,6 +4,7 @@ module dfsa.set;
 */
 
 
+// this rbtree set is obsolete but I remain this for perfomance comparison.
 version (dfsa_set_rbtree) {
     private import std.container.rbtree : RedBlackTree, redBlackTree;
     alias Set = RedBlackTree;
@@ -17,6 +18,7 @@ version (dfsa_set_rbtree) {
         assert(1 in set(0, 1, 2));
     }
 }
+// this assoc set is being used for runtime/compile-time set
 else {
     struct Set(T) {
         pure auto toString() const {
@@ -50,12 +52,55 @@ else {
             }
         }
 
+        auto opBinary(string op)(T x) {
+            static if (op == "~") {
+                return merge(this[], [x]);
+            } else {
+                static assert(false);
+            }
+        }
+        auto opBinary(string op)(const typeof(this) r) {
+            static if (op == "~") {
+                return merge(this[], r.dup[]);
+            } else {
+                static assert(false);
+            }
+        }
+
         auto opBinaryRight(string op)(T x) {
-            static if (op == "in") {
+            static if (op == "~") {
+                return merge(this, [x]);
+            } static if (op == "in") {
                 return this.canFind(x);
             } else {
                 static assert(false);
             }
+        }
+
+        auto opOpAssign(string op)(T x) {
+            static if (op == "~") {
+                this.insert(x);
+                return this;
+            } else {
+                static assert(false);
+            }
+        }
+
+        auto opOpAssign(string op)(typeof(this) r) {
+            static if (op == "~") {
+                foreach (x; r[]) this.insert(x);
+                return this;
+            } else {
+                static assert(false);
+            }
+        }
+
+        auto dup() const {
+            return set(this[]);
+        }
+
+        bool remove(T x) {
+            return this.assoc.remove(x);
         }
     }
 
@@ -83,15 +128,32 @@ else {
         import std.stdio;
 
         enum s0 = set(0, 1, 2);
+        static assert(s0.length == 3);
         static assert(1 in s0);
         static assert(-1 !in s0);
         static assert(set(0, 1, 2) == set(1, 0, 2));
 
         enum s1 = { auto s = set(0, 1);
-                    s.insert(2);
+                    s ~= 2;
+                    s ~= set(3, 4, 5);
+                    s.remove(5);
                     return s; }();
-        static assert(2 in s1);
+        static assert(s1 == set(0, 1, 2, 3, 4));
+        static assert(3 in s1);
         static assert(-2 !in s1);
+
+        auto s2 = set(0, 1);
+        auto s3 = s2.dup;
+        assert(s2.remove(1));
+        assert(!s2.remove(1));
+        s2.clear();
+        assert(s2.length == 0);
+        assert(s3 == set(0, 1));
+        static assert(set(0, 1, 2, 3, 4) == set(0, 1) ~ 2 ~ set(3, 4));
+
+        // set of set
+        static assert(set(set(0, 1), set(0, 1)).length == 1);
+        static assert(set(set(0), set(0, 1)).length == 2);
     }
 }
 
