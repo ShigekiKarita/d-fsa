@@ -1,6 +1,8 @@
 module dfsa.ast;
 
+import dfsa.set;
 import std.format : format;
+
 import dfsa.automata;
 import dfsa.builder;
 
@@ -30,7 +32,7 @@ class Char : AST {
     override Fragment assemble(scope ref Context ctx) const {
         auto s1 = ctx.newState();
         auto s2 = ctx.newState();
-        Fragment ret = {start: s1, acceptSet: Set!int([s2])};
+        Fragment ret = {start: s1, acceptSet: set(s2)};
         ret.connect(s1, this.data, s2);
         return ret;
     }
@@ -56,8 +58,8 @@ class Star : AST {
         auto orig = this.node.assemble(ctx);
         auto s = ctx.newState();
         // FIXME
-        immutable a = cast(immutable(int[]))(orig.acceptSet ~ [s]);
-        Fragment ret = {map: orig.map.dup, start: s, acceptSet: Set!int(a)};
+        auto a = merge(orig.acceptSet[], [s]);
+        Fragment ret = {map: orig.map.dup, start: s, acceptSet: a};
         ret.connect(s, dchar.init, orig.start);
 
         foreach (state; orig.acceptSet) {
@@ -88,9 +90,9 @@ class Union : AST {
         auto l = this.left.assemble(ctx);
         auto r = this.right.assemble(ctx);
         auto m = l.compose(r).map;
-        auto a = l.acceptSet ~ r.acceptSet;
+        auto a = merge(l.acceptSet[], r.acceptSet[]);
         auto s = ctx.newState();
-        Fragment ret = {start:s, map: m, acceptSet: Set!int(a)};
+        Fragment ret = {start:s, map: m, acceptSet: a};
         ret.connect(s, dchar.init, l.start);
         ret.connect(s, dchar.init, r.start);
         return ret;

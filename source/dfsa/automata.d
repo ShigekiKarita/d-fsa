@@ -1,25 +1,25 @@
 module dfsa.automata;
 
-import std.container.rbtree : RedBlackTree, redBlackTree;
+import dfsa.set;
 import std.functional : binaryFun;
-import std.algorithm : canFind;
 
 extern (C):
-@nogc:
+// @nogc:
 
-struct Set(T) {
-    immutable T[] data;
-    alias data this;
-}
+// struct Set(T) {
+//     immutable T[] data;
+//     alias data this;
+// }
 
-struct MutableSet(T) {
-    T[] data;
-    alias data this;
-}
+// struct MutableSet(T) {
+//     // T[] data;
+//     // alias data this;
+//     RedBlackTree!T data;
+//     void insert
+// }
 
 
 struct Epsilon {}
-
 
 /// Transition : (current state, input symbol or eps) -> [next states]
 struct NFA(State, Input, alias Transition) {
@@ -44,7 +44,7 @@ struct DFA(State, Input, alias trans) {
         }
 
         bool accept() {
-            return this.acceptStates.data.canFind(this.state);
+            return this.acceptStates.canFind(this.state);
         }
 
         bool accept(scope const Input[] inputs) {
@@ -59,7 +59,7 @@ struct DFA(State, Input, alias trans) {
 }
 
 
-@nogc pure
+// @nogc pure
 unittest {
     /**
        NFA example
@@ -72,15 +72,14 @@ unittest {
        |    \-------------/
     */
     auto transition(int state, string c) {
-        if (state == 0 && c == "a") return Set!int([1, 2]);
-        if (state == 1 && c == "b") return Set!int([2]);
-        if (state == 2 && c == "") return Set!int([0]);
-        return Set!int([]);
+        if (state == 0 && c == "a") return set(1, 2);
+        if (state == 1 && c == "b") return set(2);
+        if (state == 2 && c == "") return set(0);
+        return set!int();
     }
 
     alias N0 = NFA!(int, string, transition);
-    static immutable a0 = [2];
-    N0 n = { start: 0, accept: Set!int(a0) };
+    N0 n = { start: 0, accept: set(2) };
     // writeln(n);
 
     /**
@@ -94,10 +93,9 @@ unittest {
     }
 
     alias D0 = DFA!(int, string, dfaTransition);
-    static immutable a1 = [3];
-    static immutable D0 d = { start: 1, acceptStates: Set!int(a1) };
+    static immutable D0 d = { start: 1, acceptStates: set(3) };
     static immutable i0 = ["a", "b"];
-    static assert(d.runtime.accept(i0));
+    assert(d.runtime.accept(i0));
     static immutable i1 = ["b", "a"];
-    static assert(!d.runtime.accept(i1));
+    assert(!d.runtime.accept(i1));
 }

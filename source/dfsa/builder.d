@@ -1,5 +1,6 @@
 module dfsa.builder;
 
+import dfsa.set;
 
 struct Context {
     @disable this(this);
@@ -24,14 +25,16 @@ struct NFAFragment(State, Input){
         immutable Input input;
     }
 
-    immutable State start;
-    immutable Set!State acceptSet;
-    alias Output = MutableSet!State;
+    // immutable
+    State start;
+    // immutable
+    Output acceptSet;
+    alias Output = Set!State;
     Output[Key] map;
 
     auto build() {
         auto trans(State s, Input i) {
-            return this.map.get(Key(s, i), MutableSet!State([]));
+            return this.map.get(Key(s, i), set!State());
         }
         return NFA!(State, Input, trans)(this.start, this.acceptSet);
     }
@@ -39,16 +42,16 @@ struct NFAFragment(State, Input){
     void connect(State src, Input input, State dst) {
         auto key = Key(src, input);
         if (key !in this.map) {
-            this.map[key] = Output();
+            this.map[key] = set!State();
         }
-        this.map[key] ~= dst;
+        this.map[key].insert(dst);
     }
 
-    auto compose(scope const ref typeof(this) other) {
+    auto compose(scope ref typeof(this) other) {
         auto ret = this.skelton();
         // TODO find much better way to compose assoc
         foreach (k, v; other.map) {
-            ret.map[k] = Output(v.dup);
+            ret.map[k] = set(v[]);
         }
         return ret;
     }
