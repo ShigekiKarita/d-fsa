@@ -31,6 +31,10 @@ else {
             return this.assoc.length;
         }
 
+        pure empty() const {
+            return this.length == 0;
+        }
+
         pure opSlice() const {
             return this.assoc.keys();
         }
@@ -103,6 +107,13 @@ else {
             return this.assoc.remove(x);
         }
 
+        T pop() {
+            import std.range;
+            auto f = this[].front;
+            this.remove(f);
+            return f;
+        }
+
         auto clear() {
             return this.assoc.clear();
         }
@@ -159,6 +170,7 @@ else {
         static assert(set(0, 1, 2, 3, 4) == set(0, 1) ~ 2 ~ set(3, 4));
 
         // set of set
+        static assert(set(set(0)).length == 1);
         static assert(set(set(0, 1), set(0, 1)).length == 1);
         static assert(set(set(0), set(0, 1)).length == 2);
     }
@@ -167,4 +179,58 @@ else {
 auto merge(R1, R2)(R1 r1, R2 r2) {
     import std.range : chain;
     return set(chain(r1, r2));
+}
+
+/// because assoc (hashmap) indexing is O(1), I use smaller[i] in larger
+struct IntersectRange(T) {
+
+    typeof(Set!T.init[]) smaller;
+    Set!T larger;
+
+    this(Set!T a, Set!T b) {
+        import std.range : front, empty, popFront;
+        if (a.length > b.length) {
+            this.larger = a;
+            this.smaller = b[];
+        } else {
+            this.larger = b;
+            this.smaller = a[];
+        }
+        while (!this.empty && this.smaller.front !in this.larger) {
+            this.smaller.popFront;
+        }
+    }
+
+    void popFront() {
+        if (this.empty) return;
+        import std.range : popFront, front;
+        this.smaller.popFront();
+        while (!this.empty && this.smaller.front !in this.larger) {
+            this.smaller.popFront;
+        }
+    }
+
+    @property
+    pure T front() const {
+        import std.range : front;
+        return this.smaller.front;
+    }
+
+    @property
+    pure bool empty() const {
+        import std.range : empty;
+        return this.smaller.empty;
+    }
+}
+
+auto intersect(T)(Set!T a, Set!T b) {
+    return IntersectRange!T(a, b);
+}
+
+unittest {
+    import std.range;
+    import std.stdio;
+    enum iset = IntersectRange!int(set(1, 2, 3), set(2, 3, 4));
+    static assert(set(iset) == set(2, 3));
+    static assert(isInputRange!(IntersectRange!int));
 }

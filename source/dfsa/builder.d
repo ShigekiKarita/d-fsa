@@ -30,6 +30,9 @@ struct NFAFragment(State, Input){
     Output[Arc] map;
 
     auto build() {
+        auto trans(State s, Input i) {
+            return this.map.get(Arc(s, i), set!State());
+        }
         return NFA_(this.start, this.acceptSet, this.map);
     }
 

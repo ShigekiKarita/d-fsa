@@ -20,30 +20,57 @@ extern (C):
 
 
 enum epsilon(T : dchar) = dchar.init;
+enum epsilon(T : string) = "";
 
-struct Epsilon {}
+struct ArcT(State, Input) {
+    immutable State state;
+    immutable Input input;
+
+    auto toString() {
+        import std.format;
+        if (input == epsilon!Input) {
+            return format!"Arc(%s, <eps>)"(state);
+        }
+        return format!"Arc(%s, %s)"(state, input);
+    }
+}
 
 /// Transition : (current state, input symbol or eps) -> [next states]
 struct NFA(State, Input) {
-    struct Arc {
-        immutable State state;
-        immutable Input input;
-    }
-
+    alias Arc = ArcT!(State, Input);
     State start;
     Set!State accept;
     Set!State[Arc] map;
 
-    auto transition(State s, Input i) {
+    pure transition(State s, Input i) const {
         return this.map.get(Arc(s, i), set!State());
+    }
+
+    pure epsExpand(scope const Set!State s) const {
+        auto q = s.dup;
+        Set!State ret;
+        while (!q.empty) {
+            auto stat = q.pop();
+            auto nexts = this.transition(stat, epsilon!Input);
+            ret.insert(stat);
+            foreach (n; nexts) {
+                if (n !in ret) {
+                    q.insert(n);
+                }
+            }
+        }
+        return ret;
     }
 }
 
-/// Transition : (current state, input symbol) -> next state
+/// Transition : (map, current state, input symbol) -> next state
 struct DFA(State, Input, alias trans) {
+    alias Arc = ArcT!(State, Input);
     State start;
-    Set!State acceptStates;
-    alias transition = binaryFun!trans;
+    Set!State accepts;
+    State[Arc] map;
+
+    alias transition = trans;
     alias This = typeof(this);
 
     struct Runtime {
@@ -52,11 +79,11 @@ struct DFA(State, Input, alias trans) {
         alias outer this;
 
         void move(Input i) {
-            this.state = transition(state, i);
+            this.state = transition(this.map, state, i);
         }
 
-        bool accept() {
-            return this.acceptStates.canFind(this.state);
+        pure bool accept() const {
+            return this.state in this.accepts;
         }
 
         bool accept(scope const Input[] inputs) {
@@ -70,8 +97,7 @@ struct DFA(State, Input, alias trans) {
     }
 }
 
-
-pure unittest {
+unittest {
     /**
        NFA example
        | -> (0) --- a --> (1)
@@ -82,30 +108,32 @@ pure unittest {
        |    |  \--- a --> [2]
        |    \-------------/
     */
-    // auto transition(int state, string c) {
-    //     if (state == 0 && c == "a") return set(1, 2);
-    //     if (state == 1 && c == "b") return set(2);
-    //     if (state == 2 && c == "") return set(0);
-    //     return set!int();
-    // }
 
-    // alias N0 = NFA!(int, string, transition);
-    // enum N0 n = { start: 0, accept: set(2) };
+    alias Arc = ArcT!(int, string);
 
-    // writeln(n);
+    enum NFA!(int, string) n = {
+        start: 0,
+        accept: set(2),
+        map: [Arc(0, "a"): set(1, 2),
+              Arc(1, "b"): set(2),
+              Arc(2, ""):  set(0)]
+    };
+    import std.stdio;
+    writeln(n);
 
     /**
        DFA example
        -> (1) -- a --> (2) -- b --> [3]
     */
-    auto dfaTransition(int state, string c) {
-        if (state == 1 && c == "a") return 2;
-        if (state == 2 && c == "b") return 3;
-        return 0;
-    }
+    enum dfaMap = [
+        Arc(1, "a"): 2,
+        Arc(2, "b"): 3,
+        ];
 
-    alias D0 = DFA!(int, string, dfaTransition);
-    enum D0 d = { start: 1, acceptStates: set(3) };
+    auto dfaTransition(const int[Arc] map, int state, string c) {
+        return map.get(Arc(state, c), 0);
+    }
+    enum DFA!(int, string, dfaTransition) d = { start: 1, accepts: set(3), map: dfaMap };
     static immutable i0 = ["a", "b"];
     static assert(d.runtime.accept(i0));
     static immutable i1 = ["b", "a"];

@@ -130,13 +130,14 @@ unittest {
 
     enum eps = epsilon!dchar;
     alias Arc = typeof(nfa).Arc;
-    static assert(nfa.map == [
-                   Arc(8, eps):set(1, 7), // start
-                   Arc(1, 'a'):set(2),    // 8 -> 1 'a' -> 2 accept
-                   Arc(7, eps):set(3),    // 8 -> 7
-                   Arc(3, 'b'):set(4),    // 8 -> 7 -> 3 'b'
-                   Arc(4, eps):set(5),    // 8 -> 7 -> 3 'b' -> 4
-                   Arc(5, 'c'):set(6),    // 8 -> 7 -> 3 'b' -> 4 -> 5 'c' -> 6 accept
-                   Arc(6, eps):set(3),    // ditto -> 3 (repeat)
-                   ]);
+    static assert(
+        nfa.map == [
+            Arc(8, eps):set(1, 7), // start
+            Arc(1, 'a'):set(2),    // 8 -> 1 'a' -> 2 accept
+            Arc(7, eps):set(3),    // 8 -> 7
+            Arc(3, 'b'):set(4),    // 8 -> 7 -> 3 'b'
+            Arc(4, eps):set(5),    // 8 -> 7 -> 3 'b' -> 4
+            Arc(5, 'c'):set(6),    // 8 -> 7 -> 3 'b' -> 4 -> 5 'c' -> 6 accept
+            Arc(6, eps):set(3),    // ditto -> 3 (repeat)
+            ]);
 }
