@@ -112,15 +112,16 @@ struct Parser {
 
 unittest {
     import std.stdio;
+    import dfsa.set;
     enum p = Parser(Lexer("a|(bc)*"));
     static const ast = p.expr();
     static const ast0 = new Union(new Char('a'), new Star(new Concat(new Char('b'), new Char('c'))));
-    writeln(ast0);
     static assert(ast0.toString == "Union('a', Star(Concat('b', 'c')))");
     static assert(ast == ast0);
 
-    // TODO CTFE
-    Context c;
-    auto fragment = ast.assemble(c);
-    writeln(fragment.build());
+    enum nfa = {
+        Context c;
+        return Parser(Lexer("a|(bc)*")).expr().assemble(c).build();
+    }();
+    static assert(nfa == typeof(nfa)(8, set(2, 6, 7)));
 }
