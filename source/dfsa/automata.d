@@ -19,12 +19,24 @@ extern (C):
 // }
 
 
+enum epsilon(T : dchar) = dchar.init;
+
 struct Epsilon {}
 
 /// Transition : (current state, input symbol or eps) -> [next states]
-struct NFA(State, Input, alias Transition) {
+struct NFA(State, Input) {
+    struct Arc {
+        immutable State state;
+        immutable Input input;
+    }
+
     State start;
     Set!State accept;
+    Set!State[Arc] map;
+
+    auto transition(State s, Input i) {
+        return this.map.get(Arc(s, i), set!State());
+    }
 }
 
 /// Transition : (current state, input symbol) -> next state
@@ -70,15 +82,16 @@ pure unittest {
        |    |  \--- a --> [2]
        |    \-------------/
     */
-    auto transition(int state, string c) {
-        if (state == 0 && c == "a") return set(1, 2);
-        if (state == 1 && c == "b") return set(2);
-        if (state == 2 && c == "") return set(0);
-        return set!int();
-    }
+    // auto transition(int state, string c) {
+    //     if (state == 0 && c == "a") return set(1, 2);
+    //     if (state == 1 && c == "b") return set(2);
+    //     if (state == 2 && c == "") return set(0);
+    //     return set!int();
+    // }
 
-    alias N0 = NFA!(int, string, transition);
-    enum N0 n = { start: 0, accept: set(2) };
+    // alias N0 = NFA!(int, string, transition);
+    // enum N0 n = { start: 0, accept: set(2) };
+
     // writeln(n);
 
     /**

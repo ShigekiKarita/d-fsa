@@ -18,8 +18,8 @@ version (dfsa_set_rbtree) {
 else {
     struct Set(T) {
         pure auto toString() const {
-            import std.conv : to;
-            return this.assoc.keys().to!string;
+            import std.format : format;
+            return this.assoc.keys().format!"set(%(%s, %))";
         }
 
         nothrow:

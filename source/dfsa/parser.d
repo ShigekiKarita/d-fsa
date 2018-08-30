@@ -110,6 +110,11 @@ struct Parser {
     }
 }
 
+auto parseNFA(string pattern) {
+    Context c;
+    return Parser(Lexer(pattern)).expr().assemble(c).build();
+}
+
 unittest {
     import std.stdio;
     import dfsa.set;
@@ -119,9 +124,19 @@ unittest {
     static assert(ast0.toString == "Union('a', Star(Concat('b', 'c')))");
     static assert(ast == ast0);
 
-    enum nfa = {
-        Context c;
-        return Parser(Lexer("a|(bc)*")).expr().assemble(c).build();
-    }();
-    static assert(nfa == typeof(nfa)(8, set(2, 6, 7)));
+    enum nfa = parseNFA("a|(bc)*");
+    static assert(nfa.start == 8);
+    static assert(nfa.accept == set(2, 6, 7));
+
+    enum eps = epsilon!dchar;
+    alias Arc = typeof(nfa).Arc;
+    static assert(nfa.map == [
+                   Arc(8, eps):set(1, 7), // start
+                   Arc(1, 'a'):set(2),    // 8 -> 1 'a' -> 2 accept
+                   Arc(7, eps):set(3),    // 8 -> 7
+                   Arc(3, 'b'):set(4),    // 8 -> 7 -> 3 'b'
+                   Arc(4, eps):set(5),    // 8 -> 7 -> 3 'b' -> 4
+                   Arc(5, 'c'):set(6),    // 8 -> 7 -> 3 'b' -> 4 -> 5 'c' -> 6 accept
+                   Arc(6, eps):set(3),    // ditto -> 3 (repeat)
+                   ]);
 }

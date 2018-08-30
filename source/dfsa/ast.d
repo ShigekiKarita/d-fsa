@@ -60,10 +60,10 @@ class Star : AST {
         // FIXME
         auto a = merge(orig.acceptSet[], [s]);
         Fragment ret = {map: orig.map.dup, start: s, acceptSet: a};
-        ret.connect(s, dchar.init, orig.start);
+        ret.connect(s, epsilon!dchar, orig.start);
 
         foreach (state; orig.acceptSet) {
-            ret.connect(state, dchar.init, orig.start);
+            ret.connect(state, epsilon!dchar, orig.start);
         }
         return ret;
     }
@@ -93,8 +93,8 @@ class Union : AST {
         auto a = merge(l.acceptSet[], r.acceptSet[]);
         auto s = ctx.newState();
         Fragment ret = {start:s, map: m, acceptSet: a};
-        ret.connect(s, dchar.init, l.start);
-        ret.connect(s, dchar.init, r.start);
+        ret.connect(s, epsilon!dchar, l.start);
+        ret.connect(s, epsilon!dchar, r.start);
         return ret;
     }
 
@@ -124,7 +124,7 @@ class Concat : AST {
         auto m = l.compose(r).map;
         Fragment ret = {start:l.start, map: m, acceptSet: r.acceptSet};
         foreach (state; l.acceptSet) {
-            ret.connect(state, dchar.init, r.start);
+            ret.connect(state, epsilon!dchar, r.start);
         }
         return ret;
     }

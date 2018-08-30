@@ -62,7 +62,8 @@ struct Lexer {
 
     pure front() const {
         if (this.empty) {
-            return Token(char.init, TokenKind.eof);
+            import dfsa.automata : epsilon;
+            return Token(epsilon!dchar, TokenKind.eof);
         }
 
         auto c = this.data.front;
