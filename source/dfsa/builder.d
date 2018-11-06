@@ -2,6 +2,8 @@ module dfsa.builder;
 
 import dfsa.set;
 
+nothrow:
+
 struct Context {
     @disable this(this);
     @disable new(size_t);

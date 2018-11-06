@@ -3,6 +3,8 @@ module dfsa.set;
    TODO support "CTFE" compile time function evaluation for set ops
 */
 
+pure:
+nothrow:
 
 // this rbtree set is obsolete but I remain this for perfomance comparison.
 version (dfsa_set_rbtree) {
@@ -170,7 +172,8 @@ else {
         static assert(set(0, 1, 2, 3, 4) == set(0, 1) ~ 2 ~ set(3, 4));
 
         // set of set
-        static assert(set(set(0)).length == 1);
+        import std.range : front;
+        static assert(set(set(0))[].front == set(0));
         static assert(set(set(0, 1), set(0, 1)).length == 1);
         static assert(set(set(0), set(0, 1)).length == 2);
     }
@@ -228,9 +231,21 @@ auto intersect(T)(Set!T a, Set!T b) {
 }
 
 unittest {
-    import std.range;
-    import std.stdio;
-    enum iset = IntersectRange!int(set(1, 2, 3), set(2, 3, 4));
+    enum iset = intersect(set(1, 2, 3), set(2, 3, 4));
     static assert(set(iset) == set(2, 3));
     static assert(isInputRange!(IntersectRange!int));
+    static assert(intersect(set(1, 2), set(3, 4)).empty);
+}
+
+struct DisjointSet(T) {
+    Set!T base;
+
+    bool canFind(const Set!T other) const {
+        foreach (o; other[]) {
+            if (this.base.canFind(o)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
